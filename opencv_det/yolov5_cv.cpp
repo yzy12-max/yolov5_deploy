@@ -203,8 +203,8 @@ void YOLOv5::detect(Mat& frame)
 
 int main()
 {
-
-    clock_t startTime,endTime; //计算时间
+	double timeStart = (double)getTickCount();
+        clock_t startTime,endTime; //计算时间
 	// 自己定义的yolo一些配置超参
 	Configuration yolo_nets = { 0.3, 0.5, 0.3, "yolov5s.onnx" };
 	YOLOv5 yolo_model(yolo_nets,false);
