@@ -38,20 +38,20 @@ private:
 	int inpWidth;
 	int inpHeight;
 	int num_classes;
-    string classes[80] = {"person", "bicycle", "car", "motorbike", "aeroplane", "bus",
-							"train", "truck", "boat", "traffic light", "fire hydrant",
-							"stop sign", "parking meter", "bench", "bird", "cat", "dog",
-							"horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe",
-							"backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
-							"skis", "snowboard", "sports ball", "kite", "baseball bat",
-							"baseball glove", "skateboard", "surfboard", "tennis racket",
-							"bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl",
-							"banana", "apple", "sandwich", "orange", "broccoli", "carrot",
-							"hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant",
-							"bed", "diningtable", "toilet", "tvmonitor", "laptop", "mouse",
-							"remote", "keyboard", "cell phone", "microwave", "oven", "toaster",
-							"sink", "refrigerator", "book", "clock", "vase", "scissors",
-							"teddy bear", "hair drier", "toothbrush"};
+        string classes[80] = {"person", "bicycle", "car", "motorbike", "aeroplane", "bus",
+						"train", "truck", "boat", "traffic light", "fire hydrant",
+						"stop sign", "parking meter", "bench", "bird", "cat", "dog",
+						"horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe",
+						"backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
+						"skis", "snowboard", "sports ball", "kite", "baseball bat",
+						"baseball glove", "skateboard", "surfboard", "tennis racket",
+						"bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl",
+						"banana", "apple", "sandwich", "orange", "broccoli", "carrot",
+						"hot dog", "pizza", "donut", "cake", "chair", "sofa", "pottedplant",
+						"bed", "diningtable", "toilet", "tvmonitor", "laptop", "mouse",
+						"remote", "keyboard", "cell phone", "microwave", "oven", "toaster",
+						"sink", "refrigerator", "book", "clock", "vase", "scissors",
+						"teddy bear", "hair drier", "toothbrush"};
 	//vector<string> class_names;
 	const bool keep_ratio = true;
 	Net net;   // dnn里的
@@ -216,7 +216,7 @@ int main()
 	yolo_model.detect(srcimg);
 	endTime = clock();//计时结束
 	cout << "clock_running time is:" <<(double)(endTime - startTime) / CLOCKS_PER_SEC << "s" << endl;
-    cout << "The whole run time is:" << (double)clock() /CLOCKS_PER_SEC<< "s" << endl;
+        cout << "The whole run time is:" << (double)clock() /CLOCKS_PER_SEC<< "s" << endl;
 	cout << "getTickCount_running time :" << nTime << "s" << endl;
 
 	static const string kWinName = "Deep learning object detection in OpenCV";
