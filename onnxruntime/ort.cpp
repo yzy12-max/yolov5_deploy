@@ -28,7 +28,7 @@ typedef struct BoxInfo
 	float y1;
 	float x2;
 	float y2;
-	double score;
+	float score;
 	int label;
 } BoxInfo;
 
@@ -220,8 +220,9 @@ void YOLOv5::nms(vector<BoxInfo>& input_boxes)
 	}
 	// return post_nms;
 	int idx_t = 0;
-    // remove_if()函数 remove_if(beg, end, op) //移除区间[beg,end)中每一个“令判断式:op(elem)获得true”的元素
+       // remove_if()函数 remove_if(beg, end, op) //移除区间[beg,end)中每一个“令判断式:op(elem)获得true”的元素
 	input_boxes.erase(remove_if(input_boxes.begin(), input_boxes.end(), [&idx_t, &isSuppressed](const BoxInfo& f) { return isSuppressed[idx_t++]; }), input_boxes.end());
+	// 另一种写法
 	// sort(input_boxes.begin(), input_boxes.end(), [](BoxInfo a, BoxInfo b) { return a.score > b.score; }); // 降序排列
 	// vector<bool> remove_flags(input_boxes.size(),false);
 	// auto iou = [](const BoxInfo& box1,const BoxInfo& box2)
