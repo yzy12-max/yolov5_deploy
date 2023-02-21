@@ -53,15 +53,15 @@ void YOLOv5::loadOnnx(const std::string strModelName)
 {
     TRT_Logger gLogger;   // 日志
     //根据tensorrt pipeline 构建网络
-    IBuilder* builder = createInferBuilder(gLogger);    // 
+    IBuilder* builder = createInferBuilder(gLogger);    // 网络元数据,用于搭建网络入口 
     builder->setMaxBatchSize(1);   // batchsize
     const auto explicitBatch = 1U << static_cast<uint32_t>(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);  // 显式批处理
     INetworkDefinition* network = builder->createNetworkV2(explicitBatch);                      // 定义模型
     nvonnxparser::IParser* parser = nvonnxparser::createParser(*network, gLogger);              // 使用nvonnxparser 定义一个可用的onnx解析器
     parser->parseFromFile(strModelName.c_str(), static_cast<int>(ILogger::Severity::kWARNING));   // 解析onnx
-	// 使用builder对象构建engine
+    // 使用builder对象构建engine
     IBuilderConfig* config = builder->createBuilderConfig();   // 
-	// 特别重要的属性是最大工作空间大小
+    // 特别重要的属性是最大工作空间大小
     config->setMaxWorkspaceSize(1ULL << 30);                   // 分配内存空间
     m_CudaEngine = builder->buildEngineWithConfig(*network, *config);    // 来创建一个 ICudaEngine 类型的对象，在构建引擎时，TensorRT会复制权重
 
@@ -72,7 +72,7 @@ void YOLOv5::loadOnnx(const std::string strModelName)
     std::string serialize_str;     // 
     std::ofstream serialize_output_stream;
     serialize_str.resize(gieModelStream->size()); 
-	// memcpy内存拷贝函数 ，从源内存地址的起始位置开始拷贝若干个字节到目标内存地址中
+    // memcpy内存拷贝函数 ，从源内存地址的起始位置开始拷贝若干个字节到目标内存地址中
     memcpy((void*)serialize_str.data(),gieModelStream->data(),gieModelStream->size()); 
     serialize_output_stream.open(strTrtName.c_str());  
     serialize_output_stream<<serialize_str;     // 将引擎序列化数据转储到文件中
@@ -133,21 +133,21 @@ YOLOv5::YOLOv5(Configuration config)
 	// 使用输入和输出blob名来获取输入和输出索引
     m_iInputIndex = m_CudaEngine->getBindingIndex("images");     // 输入索引
     m_iOutputIndex = m_CudaEngine->getBindingIndex("output");   // 输出  
-	Dims dims_i = m_CudaEngine->getBindingDimensions(m_iInputIndex);  // 输入，
-	int size = dims_i.d[0] * dims_i.d[1] * dims_i.d[2] * dims_i.d[3];   // 展平
-	m_InputSize = cv::Size(dims_i.d[3], dims_i.d[2]);   // 输入尺寸(W,H)
+    Dims dims_i = m_CudaEngine->getBindingDimensions(m_iInputIndex);  // 输入，
+    int size1 = dims_i.d[0] * dims_i.d[1] * dims_i.d[2] * dims_i.d[3];   // 展平
+    m_InputSize = cv::Size(dims_i.d[3], dims_i.d[2]);   // 输入尺寸(W,H)
     Dims dims_o = m_CudaEngine->getBindingDimensions(m_iOutputIndex);  // 输出，维度[0,1,2,3]NHWC
-	size = dims_o.d[0] * dims_o.d[1] * dims_o.d[2];   // 所有大小
+    int size2 = dims_o.d[0] * dims_o.d[1] * dims_o.d[2];   // 所有大小
     m_iClassNums = dims_o.d[2] - 5;    // [,,classes+5]
     m_iBoxNums = dims_o.d[1];    // [b,num_pre_boxes,classes+5]
 
 	// 分配内存大小
-    cudaMalloc(&m_ArrayDevMemory[m_iInputIndex], size * sizeof(float));
-    m_ArrayHostMemory[m_iInputIndex] = malloc(size * sizeof(float));
-    m_ArraySize[m_iInputIndex] = size *sizeof(float);
-    cudaMalloc(&m_ArrayDevMemory[m_iOutputIndex], size * sizeof(float));
-    m_ArrayHostMemory[m_iOutputIndex] = malloc( size * sizeof(float));
-    m_ArraySize[m_iOutputIndex] = size *sizeof(float);
+    cudaMalloc(&m_ArrayDevMemory[m_iInputIndex], size1 * sizeof(float));
+    m_ArrayHostMemory[m_iInputIndex] = malloc(size1 * sizeof(float));
+    m_ArraySize[m_iInputIndex] = size1 *sizeof(float);
+    cudaMalloc(&m_ArrayDevMemory[m_iOutputIndex], size2 * sizeof(float));
+    m_ArrayHostMemory[m_iOutputIndex] = malloc( size2 * sizeof(float));
+    m_ArraySize[m_iOutputIndex] = size2 *sizeof(float);
 
     // bgr
     m_InputWrappers.emplace_back(dims_i.d[2], dims_i.d[3], CV_32FC1, m_ArrayHostMemory[m_iInputIndex]);
