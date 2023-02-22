@@ -109,16 +109,16 @@ void YOLOv5::loadTrt(const std::string strName)
 // 初始化
 YOLOv5::YOLOv5(Configuration config)
 {
-	confThreshold = config.confThreshold;
-	nmsThreshold = config.nmsThreshold;
-	objThreshold = config.objThreshold;
-	inpHeight = 640;
-	inpWidth = 640;
+    confThreshold = config.confThreshold;
+    nmsThreshold = config.nmsThreshold;
+    objThreshold = config.objThreshold;
+    inpHeight = 640;
+    inpWidth = 640;
 
-	std::string model_path = config.modelpath;  // 模型权重路径
+    std::string model_path = config.modelpath;  // 模型权重路径
 	// 加载模型
-	std::string strTrtName = config.modelpath;      // 加载模型权重
-	size_t sep_pos = model_path.find_last_of(".");
+    std::string strTrtName = config.modelpath;      // 加载模型权重
+    size_t sep_pos = model_path.find_last_of(".");
     strTrtName = model_path.substr(0, sep_pos) + ".engine"; // ".trt"
 	if(ifFileExists(strTrtName.c_str()))
     {        
@@ -133,21 +133,21 @@ YOLOv5::YOLOv5(Configuration config)
 	// 使用输入和输出blob名来获取输入和输出索引
     m_iInputIndex = m_CudaEngine->getBindingIndex("images");     // 输入索引
     m_iOutputIndex = m_CudaEngine->getBindingIndex("output");   // 输出  
-	Dims dims_i = m_CudaEngine->getBindingDimensions(m_iInputIndex);  // 输入，
-	int size = dims_i.d[0] * dims_i.d[1] * dims_i.d[2] * dims_i.d[3];   // 展平
-	m_InputSize = cv::Size(dims_i.d[3], dims_i.d[2]);   // 输入尺寸(W,H)
+    Dims dims_i = m_CudaEngine->getBindingDimensions(m_iInputIndex);  // 输入，
+    int size1 = dims_i.d[0] * dims_i.d[1] * dims_i.d[2] * dims_i.d[3];   // 展平
+    m_InputSize = cv::Size(dims_i.d[3], dims_i.d[2]);   // 输入尺寸(W,H)
     Dims dims_o = m_CudaEngine->getBindingDimensions(m_iOutputIndex);  // 输出，维度[0,1,2,3]NHWC
-	size = dims_o.d[0] * dims_o.d[1] * dims_o.d[2];   // 所有大小
+    int size2 = dims_o.d[0] * dims_o.d[1] * dims_o.d[2];   // 所有大小
     m_iClassNums = dims_o.d[2] - 5;    // [,,classes+5]
     m_iBoxNums = dims_o.d[1];    // [b,num_pre_boxes,classes+5]
 
 	// 分配内存大小
-    cudaMalloc(&m_ArrayDevMemory[m_iInputIndex], size * sizeof(float));
-    m_ArrayHostMemory[m_iInputIndex] = malloc(size * sizeof(float));
-    m_ArraySize[m_iInputIndex] = size *sizeof(float);
-    cudaMalloc(&m_ArrayDevMemory[m_iOutputIndex], size * sizeof(float));
-    m_ArrayHostMemory[m_iOutputIndex] = malloc( size * sizeof(float));
-    m_ArraySize[m_iOutputIndex] = size *sizeof(float);
+    cudaMalloc(&m_ArrayDevMemory[m_iInputIndex], size1 * sizeof(float));
+    m_ArrayHostMemory[m_iInputIndex] = malloc(size1 * sizeof(float));
+    m_ArraySize[m_iInputIndex] = size1 *sizeof(float);
+    cudaMalloc(&m_ArrayDevMemory[m_iOutputIndex], size2 * sizeof(float));
+    m_ArrayHostMemory[m_iOutputIndex] = malloc( size2 * sizeof(float));
+    m_ArraySize[m_iOutputIndex] = size2 *sizeof(float);
 
     // bgr
     m_InputWrappers.emplace_back(dims_i.d[2], dims_i.d[3], CV_32FC1, m_ArrayHostMemory[m_iInputIndex]);
