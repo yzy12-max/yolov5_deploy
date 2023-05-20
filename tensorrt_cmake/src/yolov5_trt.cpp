@@ -53,15 +53,15 @@ void YOLOv5::loadOnnx(const std::string strModelName)
 {
     TRT_Logger gLogger;   // 日志
     //根据tensorrt pipeline 构建网络
-    IBuilder* builder = createInferBuilder(gLogger);    // 
+    IBuilder* builder = createInferBuilder(gLogger);    // 网络元数据,用于搭建网络入口 
     builder->setMaxBatchSize(1);   // batchsize
     const auto explicitBatch = 1U << static_cast<uint32_t>(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);  // 显式批处理
     INetworkDefinition* network = builder->createNetworkV2(explicitBatch);                      // 定义模型
     nvonnxparser::IParser* parser = nvonnxparser::createParser(*network, gLogger);              // 使用nvonnxparser 定义一个可用的onnx解析器
     parser->parseFromFile(strModelName.c_str(), static_cast<int>(ILogger::Severity::kWARNING));   // 解析onnx
-	// 使用builder对象构建engine
+    // 使用builder对象构建engine
     IBuilderConfig* config = builder->createBuilderConfig();   // 
-	// 特别重要的属性是最大工作空间大小
+    // 特别重要的属性是最大工作空间大小
     config->setMaxWorkspaceSize(1ULL << 30);                   // 分配内存空间
     m_CudaEngine = builder->buildEngineWithConfig(*network, *config);    // 来创建一个 ICudaEngine 类型的对象，在构建引擎时，TensorRT会复制权重
 
@@ -72,7 +72,7 @@ void YOLOv5::loadOnnx(const std::string strModelName)
     std::string serialize_str;     // 
     std::ofstream serialize_output_stream;
     serialize_str.resize(gieModelStream->size()); 
-	// memcpy内存拷贝函数 ，从源内存地址的起始位置开始拷贝若干个字节到目标内存地址中
+    // memcpy内存拷贝函数 ，从源内存地址的起始位置开始拷贝若干个字节到目标内存地址中
     memcpy((void*)serialize_str.data(),gieModelStream->data(),gieModelStream->size()); 
     serialize_output_stream.open(strTrtName.c_str());  
     serialize_output_stream<<serialize_str;     // 将引擎序列化数据转储到文件中
@@ -109,16 +109,16 @@ void YOLOv5::loadTrt(const std::string strName)
 // 初始化
 YOLOv5::YOLOv5(Configuration config)
 {
-    confThreshold = config.confThreshold;
-    nmsThreshold = config.nmsThreshold;
-    objThreshold = config.objThreshold;
-    inpHeight = 640;
-    inpWidth = 640;
+	confThreshold = config.confThreshold;
+	nmsThreshold = config.nmsThreshold;
+	objThreshold = config.objThreshold;
+	inpHeight = 640;
+	inpWidth = 640;
 
-    std::string model_path = config.modelpath;  // 模型权重路径
+	std::string model_path = config.modelpath;  // 模型权重路径
 	// 加载模型
-    std::string strTrtName = config.modelpath;      // 加载模型权重
-    size_t sep_pos = model_path.find_last_of(".");
+	std::string strTrtName = config.modelpath;      // 加载模型权重
+	size_t sep_pos = model_path.find_last_of(".");
     strTrtName = model_path.substr(0, sep_pos) + ".engine"; // ".trt"
 	if(ifFileExists(strTrtName.c_str()))
     {        
@@ -152,7 +152,10 @@ YOLOv5::YOLOv5(Configuration config)
     // bgr
     m_InputWrappers.emplace_back(dims_i.d[2], dims_i.d[3], CV_32FC1, m_ArrayHostMemory[m_iInputIndex]);
     m_InputWrappers.emplace_back(dims_i.d[2], dims_i.d[3], CV_32FC1, m_ArrayHostMemory[m_iInputIndex] + sizeof(float) * dims_i.d[2] * dims_i.d[3] );
-    m_InputWrappers.emplace_back(dims_i.d[2], dims_i.d[3], CV_32FC1, m_ArrayHostMemory[m_iInputIndex] + 2 * sizeof(float) * dims_i.d[2] * dims_i.d[3]); 
+    m_InputWrappers.emplace_back(dims_i.d[2], dims_i.d[3], CV_32FC1, m_ArrayHostMemory[m_iInputIndex] + 2 * sizeof(float) * dims_i.d[2] * dims_i.d[3]);
+	
+    //创建CUDA流,推理时TensorRT执行通常是异步的，因此将内核排入CUDA流
+    cudaStreamCreate(&m_CudaStream);  // 只需初始化一次即可
 }
 
 void YOLOv5::UnInit()
@@ -254,13 +257,11 @@ void YOLOv5::detect(Mat& frame)
 	cv::cvtColor(dstimg, dstimg, cv::COLOR_BGR2RGB);   // 由BGR转成RGB
 	cv::Mat m_Normalized;
 	dstimg.convertTo(m_Normalized, CV_32FC3, 1/255.);
-    cv::split(m_Normalized, m_InputWrappers);  // 通道分离[h,w,3] rgb
-    //创建CUDA流,推理时TensorRT执行通常是异步的，因此将内核排入CUDA流
-    cudaStreamCreate(&m_CudaStream); 
+        cv::split(m_Normalized, m_InputWrappers);  // 通道分离[h,w,3] rgb
 	auto ret = cudaMemcpyAsync(m_ArrayDevMemory[m_iInputIndex], m_ArrayHostMemory[m_iInputIndex], m_ArraySize[m_iInputIndex], cudaMemcpyHostToDevice, m_CudaStream); 
 	auto ret1 = m_CudaContext->enqueueV2(m_ArrayDevMemory, m_CudaStream, nullptr);    // TensorRT 执行通常是异步的，因此将内核排入 CUDA 流：
 	ret = cudaMemcpyAsync(m_ArrayHostMemory[m_iOutputIndex], m_ArrayDevMemory[m_iOutputIndex], m_ArraySize[m_iOutputIndex], cudaMemcpyDeviceToHost, m_CudaStream); //输出传回给CPU，数据从显存到内存
-    ret = cudaStreamSynchronize(m_CudaStream);
+        ret = cudaStreamSynchronize(m_CudaStream);
 	float* pdata = (float*)m_ArrayHostMemory[m_iOutputIndex];
 
 	std::vector<BoxInfo> generate_boxes;  // BoxInfo自定义的结构体
@@ -308,9 +309,9 @@ void YOLOv5::detect(Mat& frame)
 int main(int argc,char *argv[])
 {
 	clock_t startTime,endTime; //计算时间
-	Configuration yolo_nets = { 0.3, 0.5, 0.3,"/xxx/yolov5s.engine" };  // 注意路径
+	Configuration yolo_nets = { 0.3, 0.5, 0.3,"yolov5s.engine" };
 	YOLOv5 yolo_model(yolo_nets);
-	std::string imgpath = "/xxx/bus.jpg";
+	std::string imgpath = "bus.jpg";
 	Mat srcimg = imread(imgpath);
 
 	double timeStart = (double)getTickCount();
@@ -319,12 +320,12 @@ int main(int argc,char *argv[])
 	endTime = clock();//计时结束
 	double nTime = ((double)getTickCount() - timeStart) / getTickFrequency();
 	std::cout << "clock_running time is:" <<(double)(endTime - startTime) / CLOCKS_PER_SEC << "s" << std::endl;
-    std::cout << "The run time is:" << (double)clock() /CLOCKS_PER_SEC<< "s" << std::endl;
+        std::cout << "The run time is:" << (double)clock() /CLOCKS_PER_SEC<< "s" << std::endl;
 	std::cout << "getTickCount_running time :" << nTime << "sec\n" << std::endl;
 	// static const string kWinName = "Deep learning object detection in ONNXRuntime";
 	// namedWindow(kWinName, WINDOW_NORMAL);
 	// imshow(kWinName, srcimg);
-	imwrite("/xxx/restult_trt.jpg",srcimg);
+	imwrite("restult_trt.jpg",srcimg);
 	// waitKey(0);
 	// destroyAllWindows();
 	return 0;
