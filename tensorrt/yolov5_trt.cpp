@@ -153,6 +153,8 @@ YOLOv5::YOLOv5(Configuration config)
     m_InputWrappers.emplace_back(dims_i.d[2], dims_i.d[3], CV_32FC1, m_ArrayHostMemory[m_iInputIndex]);
     m_InputWrappers.emplace_back(dims_i.d[2], dims_i.d[3], CV_32FC1, m_ArrayHostMemory[m_iInputIndex] + sizeof(float) * dims_i.d[2] * dims_i.d[3] );
     m_InputWrappers.emplace_back(dims_i.d[2], dims_i.d[3], CV_32FC1, m_ArrayHostMemory[m_iInputIndex] + 2 * sizeof(float) * dims_i.d[2] * dims_i.d[3]); 
+    //创建CUDA流,推理时TensorRT执行通常是异步的，因此将内核排入CUDA流
+    cudaStreamCreate(&m_CudaStream);  // 只需初始化一次即可
 }
 
 void YOLOv5::UnInit()
@@ -254,13 +256,11 @@ void YOLOv5::detect(Mat& frame)
 	cv::cvtColor(dstimg, dstimg, cv::COLOR_BGR2RGB);   // 由BGR转成RGB
 	cv::Mat m_Normalized;
 	dstimg.convertTo(m_Normalized, CV_32FC3, 1/255.);
-    cv::split(m_Normalized, m_InputWrappers);  // 通道分离[h,w,3] rgb
-    //创建CUDA流,推理时TensorRT执行通常是异步的，因此将内核排入CUDA流
-    cudaStreamCreate(&m_CudaStream); 
+        cv::split(m_Normalized, m_InputWrappers);  // 通道分离[h,w,3] rgb
 	auto ret = cudaMemcpyAsync(m_ArrayDevMemory[m_iInputIndex], m_ArrayHostMemory[m_iInputIndex], m_ArraySize[m_iInputIndex], cudaMemcpyHostToDevice, m_CudaStream); 
 	auto ret1 = m_CudaContext->enqueueV2(m_ArrayDevMemory, m_CudaStream, nullptr);    // TensorRT 执行通常是异步的，因此将内核排入 CUDA 流：
 	ret = cudaMemcpyAsync(m_ArrayHostMemory[m_iOutputIndex], m_ArrayDevMemory[m_iOutputIndex], m_ArraySize[m_iOutputIndex], cudaMemcpyDeviceToHost, m_CudaStream); //输出传回给CPU，数据从显存到内存
-    ret = cudaStreamSynchronize(m_CudaStream);
+        ret = cudaStreamSynchronize(m_CudaStream);
 	float* pdata = (float*)m_ArrayHostMemory[m_iOutputIndex];
 
 	std::vector<BoxInfo> generate_boxes;  // BoxInfo自定义的结构体
@@ -319,7 +319,7 @@ int main(int argc,char *argv[])
 	endTime = clock();//计时结束
 	double nTime = ((double)getTickCount() - timeStart) / getTickFrequency();
 	std::cout << "clock_running time is:" <<(double)(endTime - startTime) / CLOCKS_PER_SEC << "s" << std::endl;
-    std::cout << "The run time is:" << (double)clock() /CLOCKS_PER_SEC<< "s" << std::endl;
+        std::cout << "The run time is:" << (double)clock() /CLOCKS_PER_SEC<< "s" << std::endl;
 	std::cout << "getTickCount_running time :" << nTime << "sec\n" << std::endl;
 	// static const string kWinName = "Deep learning object detection in ONNXRuntime";
 	// namedWindow(kWinName, WINDOW_NORMAL);
